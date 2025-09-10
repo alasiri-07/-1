@@ -1,0 +1,991 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>مُنظِّم المهام الشخصي</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+    <script>
+        // Set theme on initial load
+        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Cairo', sans-serif;
+            @apply bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-white;
+        }
+        .modal-backdrop {
+            transition: opacity 0.3s ease-in-out;
+        }
+        .modal-content {
+            transition: transform 0.3s ease-in-out;
+        }
+        [dir="rtl"] .ps-3 { padding-right: 0.75rem; padding-left: 0; }
+        ::-webkit-calendar-picker-indicator {
+             filter: invert(0.8);
+        }
+        .dark ::-webkit-calendar-picker-indicator {
+             filter: invert(0.2);
+        }
+        .nav-btn {
+            transition: all 0.2s ease-in-out;
+        }
+        .nav-btn.active {
+            background-color: #06b6d4;
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(6, 182, 212, 0.4);
+        }
+        .habit-card {
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .habit-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+        }
+        .dark .habit-card:hover {
+            box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+        }
+        .emoji-input {
+            font-size: 1.5rem;
+            text-align: center;
+        }
+        .task.dragging {
+            opacity: 0.5;
+            background: #0891b2;
+        }
+    </style>
+</head>
+<body class="transition-colors duration-300">
+
+    <div id="app" class="max-w-4xl mx-auto p-4 sm:p-6">
+
+        <!-- Header -->
+        <header class="flex justify-between items-center mb-6">
+            <h1 class="text-3xl font-bold text-cyan-500 dark:text-cyan-400">مُنظِّم المهام</h1>
+            <div class="flex items-center gap-2">
+                <button id="themeToggleBtn" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">
+                    <svg id="theme-icon-light" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-cyan-500 hidden"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+                    <svg id="theme-icon-dark" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-cyan-400 hidden"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+                </button>
+                <button id="statsBtn" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-cyan-500 dark:text-cyan-400"><path d="M3 3v18h18"/><path d="M18.7 8a6 6 0 0 0-6 6h6a6 6 0 0 0-6-6Z"/><path d="M12.7 8a6 6 0 0 1 6 6h-6a6 6 0 0 1-6-6Z"/></svg>
+                </button>
+                 <button id="settingsBtn" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-cyan-500 dark:text-cyan-400"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Navigation -->
+        <nav class="grid grid-cols-6 gap-2 sm:gap-4 mb-6">
+            <button data-view="dashboard" class="nav-btn active bg-gray-200 dark:bg-gray-800 p-3 rounded-lg font-semibold">لوحة التحكم</button>
+            <button data-view="daily" class="nav-btn bg-gray-200 dark:bg-gray-800 p-3 rounded-lg font-semibold">يومي</button>
+            <button data-view="weekly" class="nav-btn bg-gray-200 dark:bg-gray-800 p-3 rounded-lg font-semibold">أسبوعي</button>
+            <button data-view="monthly" class="nav-btn bg-gray-200 dark:bg-gray-800 p-3 rounded-lg font-semibold">شهري</button>
+            <button data-view="yearly" class="nav-btn bg-gray-200 dark:bg-gray-800 p-3 rounded-lg font-semibold">سنوي</button>
+            <button data-view="habits" class="nav-btn bg-gray-200 dark:bg-gray-800 p-3 rounded-lg font-semibold">عادات</button>
+        </nav>
+
+        <main>
+             <!-- Main View Container -->
+            <div id="viewContainer">
+                <h2 id="viewTitle" class="text-xl font-semibold mb-4"></h2>
+                <!-- Dashboard -->
+                <div id="dashboardView" class="space-y-6"></div>
+                <!-- Search and Filter -->
+                <div id="searchFilterContainer" class="mb-4 p-3 bg-gray-200 dark:bg-gray-800/50 rounded-lg flex-col sm:flex-row gap-3 hidden">
+                    <input type="text" id="searchInput" placeholder="ابحث عن مهمة..." class="flex-grow bg-white dark:bg-gray-700 p-2 rounded-md border border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 outline-none">
+                </div>
+                <!-- Tasks List -->
+                <div id="taskList" class="space-y-3"></div>
+                <!-- Habits Grid -->
+                <div id="habitGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+            </div>
+        </main>
+        
+        <!-- Floating Add Button -->
+        <button id="addBtn" class="fixed bottom-6 end-6 bg-cyan-500 text-white w-14 h-14 rounded-full flex items-center justify-center shadow-lg hover:bg-cyan-600 transition-transform transform hover:scale-110">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+        </button>
+    </div>
+
+    <!-- Task Modal -->
+    <div id="taskModal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 modal-backdrop opacity-0 pointer-events-none">
+        <div class="bg-gray-100 dark:bg-gray-800 rounded-xl p-6 w-full max-w-md modal-content transform scale-95 max-h-[90vh] flex flex-col">
+            <h2 id="modalTitle" class="text-2xl font-bold mb-6">إضافة مهمة جديدة</h2>
+            <form id="taskForm" class="flex-grow overflow-y-auto pr-2">
+                <input type="hidden" id="taskId">
+                <input type="text" id="taskName" placeholder="اسم المهمة" class="w-full bg-white dark:bg-gray-700 p-3 rounded-lg mb-4" required>
+                
+                <div class="flex gap-4 mb-4">
+                    <div class="w-2/3">
+                        <label for="taskCategory" class="block text-sm mb-1 text-gray-600 dark:text-gray-400">الفئة</label>
+                        <select id="taskCategory" class="w-full bg-white dark:bg-gray-700 p-3 rounded-lg appearance-none"></select>
+                    </div>
+                    <button type="button" id="addCategoryBtn" class="w-1/3 self-end bg-gray-300 dark:bg-gray-600 hover:bg-gray-400 dark:hover:bg-gray-500 rounded-lg h-12">إضافة فئة</button>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label for="taskFrequency" class="block text-sm mb-1 text-gray-600 dark:text-gray-400">التصنيف</label>
+                        <select id="taskFrequency" class="w-full bg-white dark:bg-gray-700 p-3 rounded-lg appearance-none">
+                            <option value="daily">يومي</option>
+                            <option value="weekly">أسبوعي</option>
+                            <option value="monthly">شهري</option>
+                            <option value="yearly">سنوي</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="taskPriority" class="block text-sm mb-1 text-gray-600 dark:text-gray-400">الأولوية</label>
+                        <select id="taskPriority" class="w-full bg-white dark:bg-gray-700 p-3 rounded-lg appearance-none">
+                            <option value="low">عادي</option>
+                            <option value="medium">متوسط</option>
+                            <option value="high">هام</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div id="recurrenceOptions" class="hidden mb-4 bg-gray-200 dark:bg-gray-700/50 p-3 rounded-lg">
+                    <label for="taskRecurrenceTimes" class="block text-sm mb-2 text-gray-500 dark:text-gray-300">كم مرة في الأسبوع؟</label>
+                    <input type="number" id="taskRecurrenceTimes" min="1" max="7" class="w-full bg-gray-300 dark:bg-gray-600 p-2.5 rounded-lg text-center" value="1">
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">سيقوم التطبيق بتوزيع المهام تلقائيًا خلال الأسابيع القادمة.</p>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label for="taskDueDate" class="block text-sm mb-1 text-gray-600 dark:text-gray-400">تاريخ الاستحقاق</label>
+                        <input type="date" id="taskDueDate" class="w-full bg-white dark:bg-gray-700 p-2.5 rounded-lg" required>
+                    </div>
+                     <div>
+                        <label for="taskDueTime" class="block text-sm mb-1 text-gray-600 dark:text-gray-400">وقت التنبيه</label>
+                        <input type="time" id="taskDueTime" class="w-full bg-white dark:bg-gray-700 p-2.5 rounded-lg">
+                    </div>
+                </div>
+                
+                <textarea id="taskNotes" placeholder="ملاحظات..." class="w-full bg-white dark:bg-gray-700 p-3 rounded-lg mb-4" rows="3"></textarea>
+                
+                <div>
+                     <label for="taskAttachment" class="block text-sm mb-1 text-gray-600 dark:text-gray-400">مرفق (اسم الملف)</label>
+                     <input type="text" id="taskAttachment" placeholder="اسم الملف المرفق" class="w-full bg-white dark:bg-gray-700 p-3 rounded-lg mb-4">
+                </div>
+
+                <!-- Subtasks Section -->
+                <div class="mb-4">
+                    <label class="block text-sm mb-2 text-gray-600 dark:text-gray-400">مهام فرعية</label>
+                    <div id="subtaskListModal" class="space-y-2 mb-2"></div>
+                    <div class="flex gap-2">
+                        <input type="text" id="newSubtaskInput" placeholder="أضف مهمة فرعية..." class="w-full bg-white dark:bg-gray-700 p-2 rounded-lg">
+                        <button type="button" id="addSubtaskBtn" class="px-4 bg-cyan-500 text-white rounded-lg hover:bg-cyan-600">+</button>
+                    </div>
+                </div>
+
+            </form>
+            <div class="flex justify-end gap-3 mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                <button type="button" id="closeModalBtn" class="px-6 py-2 bg-gray-300 dark:bg-gray-600 rounded-lg hover:bg-gray-400 dark:hover:bg-gray-500">إلغاء</button>
+                <button type="submit" form="taskForm" class="px-6 py-2 bg-cyan-500 rounded-lg hover:bg-cyan-600">حفظ</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Category Modal -->
+    <div id="categoryModal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 modal-backdrop opacity-0 pointer-events-none">
+        <div class="bg-gray-100 dark:bg-gray-800 rounded-xl p-6 w-full max-w-sm modal-content transform scale-95">
+            <h2 class="text-2xl font-bold mb-6">فئة جديدة</h2>
+            <form id="categoryForm">
+                <input type="text" id="categoryName" placeholder="اسم الفئة" class="w-full bg-white dark:bg-gray-700 p-3 rounded-lg mb-4" required>
+                <div class="mb-4">
+                    <label class="block text-sm mb-2 text-gray-600 dark:text-gray-400">اختر لون</label>
+                    <div id="colorOptions" class="flex flex-wrap gap-3"></div>
+                    <input type="hidden" id="categoryColor" required>
+                </div>
+                <div class="mb-6">
+                    <label class="block text-sm mb-2 text-gray-600 dark:text-gray-400">اختر أيقونة</label>
+                    <div id="iconOptions" class="flex flex-wrap gap-2"></div>
+                    <input type="hidden" id="categoryIcon" required>
+                </div>
+                <div class="flex justify-end gap-3">
+                    <button type="button" id="closeCategoryModalBtn" class="px-6 py-2 bg-gray-300 dark:bg-gray-600 rounded-lg hover:bg-gray-400 dark:hover:bg-gray-500">إلغاء</button>
+                    <button type="submit" class="px-6 py-2 bg-cyan-500 rounded-lg hover:bg-cyan-600">حفظ الفئة</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Stats Modal -->
+    <div id="statsModal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 modal-backdrop opacity-0 pointer-events-none">
+        <div class="bg-gray-100 dark:bg-gray-800 rounded-xl p-6 w-full max-w-md modal-content transform scale-95">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold">إحصائيات الإنجاز</h2>
+                <button id="closeStatsModalBtn" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">&times;</button>
+            </div>
+            <div class="space-y-4">
+                <div>
+                    <h3 class="font-semibold text-lg mb-2">إنجاز الأسبوع</h3>
+                    <div class="bg-gray-200 dark:bg-gray-700 rounded-lg p-3">
+                        <span id="weeklyCompleted">0</span> / <span id="weeklyTotal">0</span> مهمة مكتملة
+                        <div class="w-full bg-gray-300 dark:bg-gray-600 rounded-full h-2.5 mt-2">
+                            <div id="weeklyProgressBar" class="bg-cyan-500 h-2.5 rounded-full" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+                 <div>
+                    <h3 class="font-semibold text-lg mb-2">إنجاز الشهر</h3>
+                    <div class="bg-gray-200 dark:bg-gray-700 rounded-lg p-3">
+                        <span id="monthlyCompleted">0</span> / <span id="monthlyTotal">0</span> مهمة مكتملة
+                        <div class="w-full bg-gray-300 dark:bg-gray-600 rounded-full h-2.5 mt-2">
+                            <div id="monthlyProgressBar" class="bg-green-500 h-2.5 rounded-full" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <h3 class="font-semibold text-lg mb-2">الإنجاز حسب الفئة</h3>
+                    <div id="categoryStats" class="space-y-2"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Habit Modal -->
+    <div id="habitModal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 modal-backdrop opacity-0 pointer-events-none">
+        <div class="bg-gray-100 dark:bg-gray-800 rounded-xl p-6 w-full max-w-sm modal-content transform scale-95">
+            <h2 id="habitModalTitle" class="text-2xl font-bold mb-6">إضافة عادة جديدة</h2>
+            <form id="habitForm">
+                <input type="hidden" id="habitId">
+                <input type="text" id="habitName" placeholder="اسم العادة (مثل: المشي، القراءة...)" class="w-full bg-white dark:bg-gray-700 p-3 rounded-lg mb-4" required>
+                <div class="mb-4">
+                    <label class="block text-sm mb-2 text-gray-600 dark:text-gray-400">اختر أيقونة</label>
+                    <div id="habitIconOptions" class="flex flex-wrap gap-2"></div>
+                    <input type="hidden" id="habitIconSvg">
+                </div>
+                <div class="mb-4">
+                     <label class="block text-sm mb-2 text-gray-600 dark:text-gray-400">أو أدخل إيموجي</label>
+                     <input type="text" id="habitIconEmoji" placeholder="الصق إيموجي هنا" class="w-full bg-white dark:bg-gray-700 p-2 rounded-lg emoji-input" maxlength="2">
+                </div>
+                <div class="flex justify-end gap-3">
+                    <button type="button" id="closeHabitModalBtn" class="px-6 py-2 bg-gray-300 dark:bg-gray-600 rounded-lg hover:bg-gray-400 dark:hover:bg-gray-500">إلغاء</button>
+                    <button type="submit" class="px-6 py-2 bg-cyan-500 rounded-lg hover:bg-cyan-600">حفظ</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Habit Details Modal -->
+    <div id="habitDetailsModal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 modal-backdrop opacity-0 pointer-events-none">
+        <div class="bg-gray-100 dark:bg-gray-800 rounded-xl p-6 w-full max-w-lg modal-content transform scale-95 max-h-[80vh] flex flex-col">
+            <h2 id="habitDetailsTitle" class="text-2xl font-bold mb-4">تفاصيل العادة</h2>
+            <div class="flex flex-col sm:flex-row gap-4 mb-4">
+                <input type="week" id="habitWeekPicker" class="w-full bg-white dark:bg-gray-700 p-2 rounded-lg border dark:border-gray-600">
+                <input type="month" id="habitMonthPicker" class="w-full bg-white dark:bg-gray-700 p-2 rounded-lg border dark:border-gray-600">
+                <input type="number" id="habitYearPicker" placeholder="YYYY" class="w-full bg-white dark:bg-gray-700 p-2 rounded-lg border dark:border-gray-600">
+            </div>
+            <div id="habitStatsDisplay" class="flex-grow bg-gray-200 dark:bg-gray-700/50 p-4 rounded-lg space-y-3 text-center"></div>
+            <div class="mt-4 text-center">
+                <button type="button" id="closeHabitDetailsModalBtn" class="px-6 py-2 bg-gray-300 dark:bg-gray-600 rounded-lg hover:bg-gray-400 dark:hover:bg-gray-500">إغلاق</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+     <div id="settingsModal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 modal-backdrop opacity-0 pointer-events-none">
+        <div class="bg-gray-100 dark:bg-gray-800 rounded-xl p-6 w-full max-w-md modal-content transform scale-95">
+            <h2 class="text-2xl font-bold mb-6">الإعدادات</h2>
+            <div class="space-y-4">
+                <h3 class="font-semibold text-lg text-gray-700 dark:text-gray-300">إدارة البيانات</h3>
+                <div class="p-4 bg-gray-200 dark:bg-gray-700/50 rounded-lg space-y-3">
+                    <p class="text-sm text-gray-600 dark:text-gray-400">يمكنك حفظ نسخة احتياطية من جميع بياناتك (المهام، العادات، الفئات) في ملف، واستعادتها لاحقًا أو على جهاز آخر.</p>
+                    <div class="flex gap-4">
+                        <button id="exportDataBtn" class="w-full bg-cyan-500 text-white py-2 px-4 rounded-lg hover:bg-cyan-600">تصدير البيانات</button>
+                        <button id="importDataBtn" class="w-full bg-green-500 text-white py-2 px-4 rounded-lg hover:bg-green-600">استيراد البيانات</button>
+                        <input type="file" id="importFileInput" class="hidden" accept=".json">
+                    </div>
+                </div>
+            </div>
+             <div class="mt-6 text-center">
+                <button type="button" id="closeSettingsModalBtn" class="px-6 py-2 bg-gray-300 dark:bg-gray-600 rounded-lg hover:bg-gray-400 dark:hover:bg-gray-500">إغلاق</button>
+            </div>
+        </div>
+    </div>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+
+    // --- STATE MANAGEMENT ---
+    let state = {
+        tasks: [],
+        categories: [],
+        habits: [],
+        currentView: 'dashboard',
+        searchTerm: '',
+        filters: { priority: 'all', status: 'all' }
+    };
+
+    // --- DOM ELEMENTS ---
+    const app = document.getElementById('app');
+    const viewContainer = document.getElementById('viewContainer');
+    const dashboardView = document.getElementById('dashboardView');
+    const taskListContainer = document.getElementById('taskList');
+    const habitGridContainer = document.getElementById('habitGrid');
+    const taskModal = document.getElementById('taskModal');
+    const taskForm = document.getElementById('taskForm');
+    const closeModalBtn = document.getElementById('closeModalBtn');
+    const addBtn = document.getElementById('addBtn');
+    const viewTitle = document.getElementById('viewTitle');
+    const taskFrequency = document.getElementById('taskFrequency');
+    const recurrenceOptions = document.getElementById('recurrenceOptions');
+    const navButtons = document.querySelectorAll('.nav-btn');
+    const themeToggleBtn = document.getElementById('themeToggleBtn');
+    const searchInput = document.getElementById('searchInput');
+    const searchFilterContainer = document.getElementById('searchFilterContainer');
+    const filterPriority = document.getElementById('filterPriority');
+    const filterStatus = document.getElementById('filterStatus');
+    const subtaskListModal = document.getElementById('subtaskListModal');
+    const newSubtaskInput = document.getElementById('newSubtaskInput');
+    const addSubtaskBtn = document.getElementById('addSubtaskBtn');
+    const categoryModal = document.getElementById('categoryModal');
+    const addCategoryBtn = document.getElementById('addCategoryBtn');
+    const closeCategoryModalBtn = document.getElementById('closeCategoryModalBtn');
+    const categoryForm = document.getElementById('categoryForm');
+    const colorOptions = document.getElementById('colorOptions');
+    const iconOptions = document.getElementById('iconOptions');
+    const statsModal = document.getElementById('statsModal');
+    const statsBtn = document.getElementById('statsBtn');
+    const closeStatsModalBtn = document.getElementById('closeStatsModalBtn');
+    const habitModal = document.getElementById('habitModal');
+    const habitForm = document.getElementById('habitForm');
+    const closeHabitModalBtn = document.getElementById('closeHabitModalBtn');
+    const habitIconOptions = document.getElementById('habitIconOptions');
+    const habitIconEmojiInput = document.getElementById('habitIconEmoji');
+    const habitIconSvgInput = document.getElementById('habitIconSvg');
+    const habitDetailsModal = document.getElementById('habitDetailsModal');
+    const closeHabitDetailsModalBtn = document.getElementById('closeHabitDetailsModalBtn');
+    const habitDetailsTitle = document.getElementById('habitDetailsTitle');
+    const habitStatsDisplay = document.getElementById('habitStatsDisplay');
+    const habitWeekPicker = document.getElementById('habitWeekPicker');
+    const habitMonthPicker = document.getElementById('habitMonthPicker');
+    const habitYearPicker = document.getElementById('habitYearPicker');
+    const settingsModal = document.getElementById('settingsModal');
+    const settingsBtn = document.getElementById('settingsBtn');
+    const closeSettingsModalBtn = document.getElementById('closeSettingsModalBtn');
+    const exportDataBtn = document.getElementById('exportDataBtn');
+    const importDataBtn = document.getElementById('importDataBtn');
+    const importFileInput = document.getElementById('importFileInput');
+
+
+    // --- DATA CONSTANTS ---
+    const ICONS = {
+        briefcase: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>`,
+        home: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>`,
+        car: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 16.5V14a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2.5"/><path d="M14 16.5H4.6a2 2 0 0 1-2-1.7l-1.3-4.5a2 2 0 0 1 1-2.3l3.4-1.9a2 2 0 0 1 2.3 1L11 14"/><path d="m11 14 3 3"/><path d="M14 17h5a2 2 0 0 0 2-2v-3.4a2 2 0 0 0-1-1.8l-3.4-1.8a2 2 0 0 0-2.3.9Z"/><circle cx="6.5" cy="16.5" r="2.5"/><circle cx="16.5" cy="16.5" r="2.5"/></svg>`,
+        heart: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>`
+    };
+    const HABIT_ICONS = {
+        walking: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-2"/><path d="M8 4H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h2"/><path d="M12 2v20"/></svg>`,
+        reading: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>`,
+        water: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4.5 8-11.8A8 8 0 0 0 4 10.2C4 17.5 12 22 12 22z"></path><path d="M12 12a3 3 0 0 0 3-3c0-2-3-3-3-3s-3 1-3 3a3 3 0 0 0 3 3z"></path></svg>`,
+        exercise: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.4 14.4 9.6 9.6M18 11h-1.5a2.5 2.5 0 0 0-5 0H10a2.5 2.5 0 0 0-5 0H2"/><path d="m22 2-5 5"/><path d="m6 18 5-5"/><path d="M2 13h1.5a2.5 2.5 0 0 0 5 0H10a2.5 2.5 0 0 0 5 0H17a2.5 2.5 0 0 0 5 0h1.5"/></svg>`
+    };
+    const COLORS = ['#ef4444', '#f97316', '#eab308', '#84cc16', '#22c55e', '#14b8a6', '#06b6d4', '#3b82f6', '#8b5cf6', '#d946ef'];
+    const VIEW_TITLES = {
+        dashboard: 'لوحة التحكم', daily: 'المهام اليومية', weekly: 'المهام الأسبوعية', monthly: 'المهام الشهرية', yearly: 'المهام السنوية', habits: 'متتبع العادات'
+    };
+
+    // --- DATA PERSISTENCE ---
+    const saveData = () => localStorage.setItem('taskAppData', JSON.stringify(state));
+    const loadData = () => {
+        const data = localStorage.getItem('taskAppData');
+        if (data) {
+            const parsedData = JSON.parse(data);
+            state = { ...state, ...parsedData };
+            state.tasks = (state.tasks || []).map(t => ({...t, dueDate: new Date(t.dueDate), subtasks: t.subtasks || []}));
+            state.habits = (state.habits || []).map(h => ({...h, completions: h.completions.map(c => new Date(c))}));
+            state.categories = state.categories || [];
+        } else {
+            state.categories = [ { id: 1, name: 'عمل', color: '#3b82f6', icon: 'briefcase' }, { id: 2, name: 'شخصي', color: '#8b5cf6', icon: 'home' } ];
+        }
+    };
+
+    // --- UTILITIES ---
+    const formatDate = (date) => date.toISOString().split('T')[0];
+    const getPriorityStyles = (priority) => ({ high: 'border-red-500', medium: 'border-yellow-500', low: 'border-green-500' }[priority] || 'border-gray-600');
+
+    // --- MODAL HANDLING ---
+    const openModal = (modalElement) => {
+        modalElement.classList.remove('opacity-0', 'pointer-events-none');
+        modalElement.querySelector('.modal-content').classList.remove('scale-95');
+    };
+    const closeModal = (modalElement) => {
+        modalElement.classList.add('opacity-0');
+        modalElement.querySelector('.modal-content').classList.add('scale-95');
+        setTimeout(() => modalElement.classList.add('pointer-events-none'), 300);
+    };
+
+    // --- RENDER FUNCTIONS ---
+    const render = () => {
+        updateActiveNav();
+        viewTitle.textContent = VIEW_TITLES[state.currentView];
+        ['dashboardView', 'taskList', 'habitGrid', 'searchFilterContainer'].forEach(elId => document.getElementById(elId).classList.add('hidden'));
+
+        switch (state.currentView) {
+            case 'dashboard':
+                dashboardView.classList.remove('hidden');
+                renderDashboard();
+                break;
+            case 'habits':
+                habitGridContainer.classList.remove('hidden');
+                renderHabits();
+                break;
+            default:
+                taskListContainer.classList.remove('hidden');
+                searchFilterContainer.classList.remove('hidden');
+                renderTasksByFrequency();
+                break;
+        }
+    };
+
+    const updateActiveNav = () => navButtons.forEach(btn => btn.classList.toggle('active', btn.dataset.view === state.currentView));
+    const updateThemeIcons = () => {
+        const isDark = document.documentElement.classList.contains('dark');
+        document.getElementById('theme-icon-dark').classList.toggle('hidden', !isDark);
+        document.getElementById('theme-icon-light').classList.toggle('hidden', isDark);
+    };
+
+    const renderDashboard = () => {
+        dashboardView.innerHTML = '';
+        const upcomingTasks = state.tasks.filter(t => !t.completed && new Date(t.dueDate) >= new Date()).sort((a,b) => new Date(a.dueDate) - new Date(b.dueDate));
+        let upcomingTaskHTML = `<div class="bg-white dark:bg-gray-800 p-5 rounded-xl shadow-md text-center"><p class="text-gray-500">لا توجد مهام قادمة.</p></div>`;
+        if (upcomingTasks.length > 0) {
+            const nextTask = upcomingTasks[0];
+            const now = new Date();
+            const taskDate = new Date(nextTask.dueDate);
+            const diffMs = taskDate - now;
+            const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+            const diffHours = Math.ceil(diffMs / (1000 * 60 * 60));
+            const timeLeft = diffDays > 1 ? `متبقي ${diffDays} أيام` : (diffHours > 0 ? `متبقي ${diffHours} ساعات` : 'حان الوقت');
+            upcomingTaskHTML = `<div class="bg-cyan-500/10 dark:bg-cyan-400/20 p-5 rounded-xl shadow-md text-center border-t-4 border-cyan-400">
+                <p class="text-sm text-cyan-800 dark:text-cyan-200">المهمة التالية</p>
+                <p class="text-xl font-bold my-2">${nextTask.name}</p>
+                <p class="text-sm font-semibold text-cyan-600 dark:text-cyan-300">${timeLeft}</p>
+            </div>`;
+        }
+        
+        const today = new Date();
+        today.setHours(0,0,0,0);
+        const tomorrow = new Date(today);
+        tomorrow.setDate(today.getDate() + 1);
+        const todayTasks = state.tasks.filter(t => new Date(t.dueDate) >= today && new Date(t.dueDate) < tomorrow);
+        let todayTasksHTML = `
+            <div class="bg-white dark:bg-gray-800 p-5 rounded-xl shadow-md">
+                <h3 class="font-bold text-lg mb-3">مهام اليوم (${todayTasks.length})</h3>
+                <div class="text-center text-gray-500 py-4">لا توجد مهام لهذا اليوم.</div>
+            </div>`;
+        if (todayTasks.length > 0) {
+             todayTasksHTML = `
+                <div class="bg-white dark:bg-gray-800 p-5 rounded-xl shadow-md">
+                    <div class="flex justify-between items-center mb-3">
+                        <h3 class="font-bold text-lg">مهام اليوم (${todayTasks.length})</h3>
+                        <button class="text-sm text-cyan-500 hover:underline" onclick="document.querySelector('[data-view=daily]').click()">عرض الكل</button>
+                    </div>
+                    <div class="space-y-2">
+                        ${todayTasks.slice(0, 3).map(t => `<div class="flex items-center gap-3 p-2 rounded-lg ${t.completed ? 'opacity-50' : ''}"><input type="checkbox" data-task-id="${t.id}" class="toggle-complete-btn-dashboard accent-cyan-500" ${t.completed ? 'checked' : ''}><span class="${t.completed ? 'line-through' : ''}">${t.name}</span></div>`).join('')}
+                    </div>
+                </div>`;
+        }
+
+        let habitsHTML = ``;
+        if (state.habits.length > 0) {
+            habitsHTML = `
+            <div class="bg-white dark:bg-gray-800 p-5 rounded-xl shadow-md">
+                <h3 class="font-bold text-lg mb-3">عادات اليوم</h3>
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                    ${state.habits.map(h => {
+                         const isDoneToday = h.completions.some(c => new Date(c).setHours(0,0,0,0) === new Date().setHours(0,0,0,0));
+                         const icon = HABIT_ICONS[h.icon] ? `<div class="w-8 h-8">${HABIT_ICONS[h.icon]}</div>` : `<div class="text-2xl">${h.icon}</div>`;
+                         return `<button data-habit-id="${h.id}" class="log-habit-btn flex flex-col items-center gap-2 p-3 rounded-lg transition-colors ${isDoneToday ? 'bg-green-500/20 text-green-500' : 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600'}">
+                            ${icon}
+                            <span class="text-sm font-semibold">${h.name}</span>
+                         </button>`
+                    }).join('')}
+                </div>
+            </div>`;
+        }
+        dashboardView.innerHTML = upcomingTaskHTML + todayTasksHTML + habitsHTML;
+    };
+
+    const renderTasksByFrequency = () => {
+        let filteredTasks = state.tasks.filter(task => task.frequency === state.currentView);
+        if (state.searchTerm) {
+            filteredTasks = filteredTasks.filter(task => task.name.toLowerCase().includes(state.searchTerm.toLowerCase()));
+        }
+        if (state.filters.priority !== 'all') {
+            filteredTasks = filteredTasks.filter(task => task.priority === state.filters.priority);
+        }
+        if (state.filters.status !== 'all') {
+            filteredTasks = filteredTasks.filter(task => task.completed === (state.filters.status === 'completed'));
+        }
+        
+        taskListContainer.innerHTML = '';
+        if (filteredTasks.length === 0) {
+            taskListContainer.innerHTML = `<div class="text-center text-gray-500 p-8 bg-white dark:bg-gray-800 rounded-lg">لا توجد مهام.</div>`;
+            return;
+        }
+
+        filteredTasks.sort((a, b) => (a.order || 0) - (b.order || 0) || new Date(a.dueDate) - new Date(b.dueDate)).forEach(task => {
+            const category = state.categories.find(c => c.id === task.categoryId) || {};
+            const priorityClass = getPriorityStyles(task.priority);
+            const taskElement = document.createElement('div');
+            taskElement.className = `task bg-white dark:bg-gray-800 p-4 rounded-lg flex items-start gap-4 border-s-4 ${priorityClass} ${task.completed ? 'opacity-50' : ''}`;
+            taskElement.setAttribute('draggable', true);
+            taskElement.dataset.taskId = task.id;
+            
+            const dueDateText = new Date(task.dueDate).toLocaleDateString('ar-EG', { day: 'numeric', month: 'long'});
+            const completedSubtasks = (task.subtasks || []).filter(st => st.completed).length;
+            const subtaskProgress = (task.subtasks || []).length > 0 ? (completedSubtasks / task.subtasks.length) * 100 : 0;
+            taskElement.innerHTML = `
+                <div class="flex-shrink-0 pt-1" style="color: ${category.color || '#fff'};">${ICONS[category.icon] || ICONS.briefcase}</div>
+                <div class="flex-grow">
+                    <p class="font-semibold ${task.completed ? 'line-through' : ''}">${task.name}</p>
+                    <div class="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
+                        <span>${category.name || 'غير مصنف'}</span>
+                        <span class="text-cyan-500 dark:text-cyan-400">${dueDateText}</span>
+                    </div>
+                    ${task.notes ? `<p class="text-sm text-gray-500 dark:text-gray-400 mt-1">${task.notes}</p>` : ''}
+                    ${(task.subtasks || []).length > 0 ? `<div class="mt-3"><div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5 mb-2"><div class="bg-cyan-500 h-1.5 rounded-full" style="width: ${subtaskProgress}%"></div></div><div class="space-y-1">${task.subtasks.map(subtask => `<div class="flex items-center gap-2 text-sm"><input type="checkbox" data-task-id="${task.id}" data-subtask-id="${subtask.id}" class="subtask-checkbox rounded accent-cyan-500" ${subtask.completed ? 'checked' : ''}><label class="${subtask.completed ? 'line-through text-gray-500' : ''}">${subtask.text}</label></div>`).join('')}</div></div>` : ''}
+                </div>
+                <div class="flex flex-col items-end gap-2">
+                    <button data-task-id="${task.id}" class="toggle-complete-btn p-1 text-gray-400 hover:text-white"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${task.completed ? '<polyline points="9 11 12 14 22 4"></polyline><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>' : '<circle cx="12" cy="12" r="10"></circle>'}</svg></button>
+                    <button data-task-id="${task.id}" class="edit-task-btn p-1 text-gray-400 hover:text-white"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg></button>
+                    <button data-task-id="${task.id}" class="delete-task-btn p-1 text-red-500 hover:text-red-400"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg></button>
+                </div>`;
+            taskListContainer.appendChild(taskElement);
+        });
+    };
+    
+    const renderHabits = () => {
+        habitGridContainer.innerHTML = '';
+        if (state.habits.length === 0) {
+            habitGridContainer.innerHTML = `<div class="col-span-full text-center text-gray-500 p-8 bg-white dark:bg-gray-800 rounded-lg">لم تقم بإضافة أي عادات بعد. اضغط على زر + للبدء.</div>`;
+            return;
+        }
+        state.habits.forEach(habit => {
+            const card = document.createElement('div');
+            card.className = 'habit-card bg-white dark:bg-gray-800 p-5 rounded-xl shadow-md flex flex-col items-center justify-center gap-4 text-center';
+            const lastCompletion = habit.completions.length > 0 ? new Date(Math.max.apply(null, habit.completions)) : null;
+            const today = new Date();
+            today.setHours(0,0,0,0);
+            const isDoneToday = lastCompletion && lastCompletion >= today;
+            const iconHTML = HABIT_ICONS[habit.icon] ? `<div class="text-cyan-500 dark:text-cyan-400 w-12 h-12">${HABIT_ICONS[habit.icon]}</div>` : `<div class="text-4xl w-12 h-12 flex items-center justify-center">${habit.icon}</div>`;
+            card.innerHTML = `
+                ${iconHTML}
+                <h3 class="text-xl font-bold">${habit.name}</h3>
+                <button data-habit-id="${habit.id}" class="log-habit-btn w-full py-3 px-4 rounded-lg font-semibold text-white transition-colors ${isDoneToday ? 'bg-green-500 hover:bg-green-600' : 'bg-cyan-500 hover:bg-cyan-600'}">
+                    ${isDoneToday ? 'تم إنجاز اليوم ✔' : 'تسجيل إنجاز'}
+                </button>
+                <div class="flex justify-around w-full text-sm mt-2 text-gray-600 dark:text-gray-400">
+                     <button data-habit-id="${habit.id}" class="view-details-btn text-cyan-500 dark:text-cyan-400 hover:underline">عرض التفاصيل</button>
+                </div>
+                <div class="w-full mt-2 flex justify-between">
+                     <button data-habit-id="${habit.id}" class="edit-habit-btn text-xs text-gray-500 hover:underline">تعديل</button>
+                     <button data-habit-id="${habit.id}" class="delete-habit-btn text-xs text-red-500 hover:underline">حذف</button>
+                </div>`;
+            habitGridContainer.appendChild(card);
+        });
+    };
+
+    const renderCategoryOptions = () => {
+        colorOptions.innerHTML = '';
+        COLORS.forEach(color => {
+            const option = document.createElement('div');
+            option.className = 'w-8 h-8 rounded-full cursor-pointer border-2 border-transparent';
+            option.style.backgroundColor = color;
+            option.dataset.color = color;
+            colorOptions.appendChild(option);
+        });
+        iconOptions.innerHTML = '';
+        Object.keys(ICONS).forEach(iconKey => {
+            const option = document.createElement('div');
+            option.className = 'p-2 rounded-lg cursor-pointer border-2 border-transparent bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600';
+            option.innerHTML = ICONS[iconKey];
+            option.dataset.icon = iconKey;
+            iconOptions.appendChild(option);
+        });
+    };
+    
+    const populateCategoryDropdown = () => {
+        const dropdown = document.getElementById('taskCategory');
+        dropdown.innerHTML = '<option value="">اختر فئة...</option>';
+        state.categories.forEach(cat => {
+            const option = document.createElement('option');
+            option.value = cat.id;
+            option.textContent = cat.name;
+            dropdown.appendChild(option);
+        });
+    };
+    
+    const renderSubtasksInModal = (subtasks = []) => {
+        subtaskListModal.innerHTML = '';
+        (subtasks || []).forEach(st => {
+            const subtaskEl = document.createElement('div');
+            subtaskEl.className = 'flex items-center justify-between bg-gray-200 dark:bg-gray-700 p-2 rounded';
+            subtaskEl.dataset.subtaskId = st.id;
+            subtaskEl.innerHTML = `<span>${st.text}</span><button type="button" class="remove-subtask-btn text-red-500 hover:text-red-400">&times;</button>`;
+            subtaskListModal.appendChild(subtaskEl);
+        });
+    };
+
+    const renderStats = () => {
+        const now = new Date();
+        const startOfWeek = new Date(now);
+        startOfWeek.setDate(now.getDate() - now.getDay() + (now.getDay() === 0 ? -6 : 1)); 
+        startOfWeek.setHours(0, 0, 0, 0);
+
+        const endOfWeek = new Date(startOfWeek);
+        endOfWeek.setDate(startOfWeek.getDate() + 6);
+        endOfWeek.setHours(23, 59, 59, 999);
+
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+
+        const weeklyTasks = state.tasks.filter(t => new Date(t.dueDate) >= startOfWeek && new Date(t.dueDate) <= endOfWeek);
+        const weeklyCompleted = weeklyTasks.filter(t => t.completed).length;
+        document.getElementById('weeklyCompleted').textContent = weeklyCompleted;
+        document.getElementById('weeklyTotal').textContent = weeklyTasks.length;
+        document.getElementById('weeklyProgressBar').style.width = weeklyTasks.length > 0 ? `${(weeklyCompleted / weeklyTasks.length) * 100}%` : '0%';
+
+        const monthlyTasks = state.tasks.filter(t => new Date(t.dueDate) >= startOfMonth && new Date(t.dueDate) <= endOfMonth);
+        const monthlyCompleted = monthlyTasks.filter(t => t.completed).length;
+        document.getElementById('monthlyCompleted').textContent = monthlyCompleted;
+        document.getElementById('monthlyTotal').textContent = monthlyTasks.length;
+        document.getElementById('monthlyProgressBar').style.width = monthlyTasks.length > 0 ? `${(monthlyCompleted / monthlyTasks.length) * 100}%` : '0%';
+    
+        const categoryStatsContainer = document.getElementById('categoryStats');
+        categoryStatsContainer.innerHTML = '';
+        if (state.categories.length === 0) {
+             categoryStatsContainer.innerHTML = '<p class="text-gray-500">لا توجد فئات.</p>';
+             return;
+        }
+
+        state.categories.forEach(cat => {
+            const tasksInCategory = state.tasks.filter(t => t.categoryId === cat.id);
+            const completedInCategory = tasksInCategory.filter(t => t.completed).length;
+            const percentage = tasksInCategory.length > 0 ? Math.round((completedInCategory / tasksInCategory.length) * 100) : 0;
+
+            const catStatEl = document.createElement('div');
+            catStatEl.innerHTML = `<div class="flex justify-between items-center text-sm mb-1"><span class="flex items-center gap-2"><span class="w-3 h-3 rounded-full" style="background-color: ${cat.color}"></span>${cat.name}</span><span>${completedInCategory}/${tasksInCategory.length}</span></div><div class="w-full bg-gray-300 dark:bg-gray-600 rounded-full h-1.5"><div class="h-1.5 rounded-full" style="width: ${percentage}%; background-color: ${cat.color};"></div></div>`;
+            categoryStatsContainer.appendChild(catStatEl);
+        });
+    };
+    
+    const renderHabitIcons = () => {
+        habitIconOptions.innerHTML = '';
+        Object.keys(HABIT_ICONS).forEach(iconKey => {
+            const option = document.createElement('div');
+            option.className = 'p-3 rounded-lg cursor-pointer border-2 border-transparent bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-cyan-500 dark:text-cyan-400';
+            option.innerHTML = HABIT_ICONS[iconKey];
+            option.dataset.icon = iconKey;
+            habitIconOptions.appendChild(option);
+        });
+    };
+
+    // --- EVENT HANDLERS ---
+    themeToggleBtn.addEventListener('click', () => {
+        const isDark = document.documentElement.classList.toggle('dark');
+        localStorage.theme = isDark ? 'dark' : 'light';
+        updateThemeIcons();
+    });
+
+    navButtons.forEach(btn => btn.addEventListener('click', () => { 
+        state.currentView = btn.dataset.view; 
+        render(); 
+    }));
+    
+    addBtn.addEventListener('click', () => {
+        if (state.currentView === 'habits') {
+            habitForm.reset();
+            document.getElementById('habitId').value = '';
+            document.getElementById('habitModalTitle').textContent = 'إضافة عادة جديدة';
+            document.getElementById('habitIconSvg').value = '';
+            document.getElementById('habitIconEmoji').value = '';
+            Array.from(habitIconOptions.children).forEach(child => child.classList.remove('border-cyan-500', 'bg-cyan-900'));
+            openModal(habitModal);
+        } else {
+            taskForm.reset();
+            document.getElementById('taskId').value = '';
+            document.getElementById('modalTitle').textContent = 'إضافة مهمة جديدة';
+            document.getElementById('taskDueDate').value = formatDate(new Date());
+            taskFrequency.value = state.currentView !== 'dashboard' ? state.currentView : 'daily';
+            recurrenceOptions.classList.add('hidden');
+            document.getElementById('taskRecurrenceTimes').value = 1;
+            if (taskFrequency.value === 'weekly') {
+                recurrenceOptions.classList.remove('hidden');
+            }
+            renderSubtasksInModal([]);
+            populateCategoryDropdown();
+            openModal(taskModal);
+        }
+    });
+
+    taskForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const id = document.getElementById('taskId').value;
+        const subtasks = [];
+        subtaskListModal.querySelectorAll('div[data-subtask-id]').forEach(el => {
+            const subId = parseInt(el.dataset.subtaskId);
+            let isCompleted = false;
+            if (id) {
+                 const originalTask = state.tasks.find(t => t.id === parseInt(id));
+                 const originalSubtask = (originalTask.subtasks || []).find(st => st.id === subId);
+                 if (originalSubtask) isCompleted = originalSubtask.completed;
+            }
+            subtasks.push({ id: subId, text: el.querySelector('span').textContent, completed: isCompleted });
+        });
+        
+        const taskData = {
+            id: id ? parseInt(id) : Date.now(),
+            name: document.getElementById('taskName').value,
+            categoryId: parseInt(document.getElementById('taskCategory').value),
+            frequency: document.getElementById('taskFrequency').value,
+            priority: document.getElementById('taskPriority').value,
+            dueDate: new Date(document.getElementById('taskDueDate').value + 'T00:00:00'),
+            dueTime: document.getElementById('taskDueTime').value,
+            notes: document.getElementById('taskNotes').value,
+            attachment: document.getElementById('taskAttachment').value,
+            completed: id ? state.tasks.find(t => t.id === parseInt(id)).completed : false,
+            subtasks: subtasks
+        };
+
+        if (id) { 
+            state.tasks = state.tasks.map(t => t.id === taskData.id ? taskData : t);
+        } else { 
+            state.tasks.push(taskData);
+        }
+        saveData();
+        render();
+        closeModal(taskModal);
+    });
+    
+    closeModalBtn.addEventListener('click', () => closeModal(taskModal));
+    
+    taskListContainer.addEventListener('click', (e) => {
+        const toggleBtn = e.target.closest('.toggle-complete-btn');
+        const editBtn = e.target.closest('.edit-task-btn');
+        const deleteBtn = e.target.closest('.delete-task-btn');
+        const subtaskCheckbox = e.target.closest('.subtask-checkbox');
+
+        if (toggleBtn) {
+            const taskId = parseInt(toggleBtn.dataset.taskId);
+            const task = state.tasks.find(t => t.id === taskId);
+            if(task) { task.completed = !task.completed; saveData(); render(); }
+        }
+        if (editBtn) {
+            const taskId = parseInt(editBtn.dataset.taskId);
+            const task = state.tasks.find(t => t.id === taskId);
+            if (task) {
+                document.getElementById('modalTitle').textContent = 'تعديل المهمة';
+                document.getElementById('taskId').value = task.id;
+                document.getElementById('taskName').value = task.name;
+                document.getElementById('taskCategory').value = task.categoryId;
+                document.getElementById('taskFrequency').value = task.frequency;
+                document.getElementById('taskPriority').value = task.priority;
+                document.getElementById('taskDueDate').value = formatDate(new Date(task.dueDate));
+                document.getElementById('taskDueTime').value = task.dueTime;
+                document.getElementById('taskNotes').value = task.notes;
+                document.getElementById('taskAttachment').value = task.attachment;
+                recurrenceOptions.classList.toggle('hidden', task.frequency !== 'weekly');
+                renderSubtasksInModal(task.subtasks);
+                populateCategoryDropdown();
+                openModal(taskModal);
+            }
+        }
+        if (deleteBtn) {
+            const taskId = parseInt(deleteBtn.dataset.taskId);
+            state.tasks = state.tasks.filter(t => t.id !== taskId);
+            saveData(); render();
+        }
+        if (subtaskCheckbox) {
+            const taskId = parseInt(subtaskCheckbox.dataset.taskId);
+            const subtaskId = parseInt(subtaskCheckbox.dataset.subtaskId);
+            const task = state.tasks.find(t => t.id === taskId);
+            if (task) {
+                const subtask = (task.subtasks || []).find(st => st.id === subtaskId);
+                if (subtask) { subtask.completed = subtaskCheckbox.checked; saveData(); render(); }
+            }
+        }
+    });
+
+    dashboardView.addEventListener('click', (e) => {
+        const toggleBtn = e.target.closest('.toggle-complete-btn-dashboard');
+         if (toggleBtn) {
+            const taskId = parseInt(toggleBtn.dataset.taskId);
+            const task = state.tasks.find(t => t.id === taskId);
+            if(task) { task.completed = !task.completed; saveData(); render(); }
+        }
+        const logBtn = e.target.closest('.log-habit-btn');
+        if (logBtn) {
+            const habitId = parseInt(logBtn.dataset.habitId);
+            const habit = state.habits.find(h => h.id === habitId);
+            if (habit) { 
+                const today = new Date().setHours(0,0,0,0);
+                const isDoneToday = habit.completions.some(c => new Date(c).setHours(0,0,0,0) === today);
+                if (!isDoneToday) {
+                    habit.completions.push(new Date()); 
+                }
+                saveData(); 
+                render(); 
+            }
+        }
+    });
+
+    categoryForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const newCategory = {
+            id: Date.now(),
+            name: document.getElementById('categoryName').value,
+            color: document.getElementById('categoryColor').value,
+            icon: document.getElementById('categoryIcon').value,
+        };
+        if (newCategory.name && newCategory.color && newCategory.icon) {
+            state.categories.push(newCategory);
+            saveData();
+            populateCategoryDropdown();
+            closeModal(categoryModal);
+        }
+    });
+    
+    habitForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const id = document.getElementById('habitId').value;
+        const icon = habitIconEmojiInput.value || habitIconSvgInput.value;
+        if (!icon) { alert('الرجاء اختيار أيقونة أو إدخال إيموجي.'); return; }
+        const habitData = {
+            id: id ? parseInt(id) : Date.now(),
+            name: document.getElementById('habitName').value,
+            icon: icon,
+            completions: id ? state.habits.find(h => h.id === parseInt(id)).completions : [],
+        };
+        if (!habitData.name) return;
+        if (id) {
+             state.habits = state.habits.map(h => h.id === habitData.id ? {...h, ...habitData} : h);
+        } else {
+            state.habits.push(habitData);
+        }
+        saveData(); render(); closeModal(habitModal);
+    });
+
+    habitGridContainer.addEventListener('click', (e) => {
+        const logBtn = e.target.closest('.log-habit-btn');
+        const detailsBtn = e.target.closest('.view-details-btn');
+        const editBtn = e.target.closest('.edit-habit-btn');
+        const deleteBtn = e.target.closest('.delete-habit-btn');
+        if (logBtn) {
+            const habitId = parseInt(logBtn.dataset.habitId);
+            const habit = state.habits.find(h => h.id === habitId);
+            if (habit) { habit.completions.push(new Date()); saveData(); render(); }
+        }
+        if (detailsBtn) {
+            const habitId = parseInt(detailsBtn.dataset.habitId);
+            const habit = state.habits.find(h => h.id === habitId);
+            if(habit) {
+                habitDetailsTitle.textContent = `تفاصيل: ${habit.name}`;
+                openHabitDetails(habit);
+            }
+        }
+        if (editBtn) {
+            const habitId = parseInt(editBtn.dataset.habitId);
+            const habit = state.habits.find(h => h.id === habitId);
+            if(habit) {
+                document.getElementById('habitModalTitle').textContent = 'تعديل العادة';
+                document.getElementById('habitId').value = habit.id;
+                document.getElementById('habitName').value = habit.name;
+                document.getElementById('habitIconSvg').value = '';
+                document.getElementById('habitIconEmoji').value = '';
+                Array.from(habitIconOptions.children).forEach(child => child.classList.remove('border-cyan-500', 'bg-cyan-900'));
+                if(HABIT_ICONS[habit.icon]) {
+                    document.getElementById('habitIconSvg').value = habit.icon;
+                    habitIconOptions.querySelector(`[data-icon="${habit.icon}"]`).classList.add('border-cyan-500', 'bg-cyan-900');
+                } else {
+                    document.getElementById('habitIconEmoji').value = habit.icon;
+                }
+                openModal(habitModal);
+            }
+        }
+         if (deleteBtn) {
+            const habitId = parseInt(deleteBtn.dataset.habitId);
+            state.habits = state.habits.filter(h => h.id !== habitId);
+            saveData(); render();
+        }
+    });
+
+    colorOptions.addEventListener('click', (e) => {
+        const colorDiv = e.target.closest('[data-color]');
+        if (colorDiv) {
+            Array.from(colorOptions.children).forEach(child => child.classList.remove('border-cyan-500'));
+            colorDiv.classList.add('border-cyan-500');
+            document.getElementById('categoryColor').value = colorDiv.dataset.color;
+        }
+    });
+    iconOptions.addEventListener('click', (e) => {
+        const iconDiv = e.target.closest('[data-icon]');
+        if (iconDiv) {
+            Array.from(iconOptions.children).forEach(child => child.classList.remove('border-cyan-500', 'bg-cyan-900'));
+            iconDiv.classList.add('border-cyan-500', 'bg-cyan-900');
+            document.getElementById('categoryIcon').value = iconDiv.dataset.icon;
+        }
+    });
+    habitIconOptions.addEventListener('click', (e) => {
+        const iconDiv = e.target.closest('[data-icon]');
+        if (iconDiv) {
+            Array.from(habitIconOptions.children).forEach(child => child.classList.remove('border-cyan-500', 'bg-cyan-900'));
+            iconDiv.classList.add('border-cyan-500', 'bg-cyan-900');
+            habitIconSvgInput.value = iconDiv.dataset.icon;
+            habitIconEmojiInput.value = '';
+        }
+    });
+    habitIconEmojiInput.addEventListener('input', () => {
+        if(habitIconEmojiInput.value) {
+            habitIconSvgInput.value = '';
+            Array.from(habitIconOptions.children).forEach(child => child.classList.remove('border-cyan-500', 'bg-cyan-900'));
+        }
+    });
+
+    let currentHabitForDetails = null;
+    const openHabitDetails = (habit) => { /* ... Full details logic ... */ };
+    const updateHabitStatsDisplay = () => { /* ... Full stats display logic ... */ };
+
+    habitWeekPicker.addEventListener('change', updateHabitStatsDisplay);
+    habitMonthPicker.addEventListener('change', updateHabitStatsDisplay);
+    habitYearPicker.addEventListener('change', updateHabitStatsDisplay);
+    
+    statsBtn.addEventListener('click', () => { renderStats(); openModal(statsModal); });
+    closeStatsModalBtn.addEventListener('click', () => closeModal(statsModal));
+    addCategoryBtn.addEventListener('click', () => openModal(categoryModal));
+    closeCategoryModalBtn.addEventListener('click', () => closeModal(categoryModal));
+    closeHabitModalBtn.addEventListener('click', () => closeModal(habitModal));
+    closeHabitDetailsModalBtn.addEventListener('click', () => closeModal(habitDetailsModal));
+    settingsBtn.addEventListener('click', () => openModal(settingsModal));
+    closeSettingsModalBtn.addEventListener('click', () => closeModal(settingsModal));
+    exportDataBtn.addEventListener('click', () => { /* ... export logic ... */ });
+    importDataBtn.addEventListener('click', () => importFileInput.click());
+    importFileInput.addEventListener('change', (e) => { /* ... import logic ... */ });
+
+    // --- INITIALIZATION ---
+    const init = () => {
+        loadData();
+        updateThemeIcons();
+        renderCategoryOptions();
+        renderHabitIcons();
+        render();
+    };
+    
+    init();
+});
+</script>
+</body>
+</html>
+
